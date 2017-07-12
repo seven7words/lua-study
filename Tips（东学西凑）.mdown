@@ -1,0 +1,6 @@
+# tips
+交互需要改变鼠标的图标
+这个实现方法非常简单，要用到unity的API里的一个函数cursor。cusor里有一个可以设置鼠标的方法：Cursor.SetCursor(Texture2D,CursorMode)。
+这里的Texture2D就是你要改成的鼠标图片，但对Texture2D在unity里的渲染模式是有要求的(必须是cursor模式);CursorMode有两种模式(下面我会分别演示)。
+cursorMode = CursorMode.ForceSoftware;被我注释了，这个模式是当你鼠标改变了以后，鼠标移到unity窗口外(例如你打开一个别的软件)你unity里的鼠标依然不会消失而且是手的图标。
+如果是cursorMode = CursorMode.Auto这种模式，鼠标只有一个，当你移到unity窗口外，unity里就没有鼠标了。

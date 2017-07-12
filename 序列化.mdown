@@ -1,0 +1,20 @@
+#SerializeField
+UnityEngine的一个类
+强迫unity去序列化一个私有的字段
+unity只能序列化一个私有的字段。
+unity会序列化脚本组件，新的程序集，。。。
+可以序列化公有的不是静态变量的字段
+可以序列被[SerializeField]标记的属性
+不能序列化静态字段
+不能序列化properties字段
+
+
+序列化的类型
+继承自UNityEnigine，Object的对象
+例如 GameObject，Component，MonoBehaviour，Texture2D，AnimationCLip
+所以基础属性例如，string，float，bool
+一些用 vector2，vector3，vector4，Quaterion，Matrix4X4，Color，Rect，LayerMask构建的类型
+数组，list
+enums，structs
+# HideInInspector
+让一个序列化的字段不显示出来

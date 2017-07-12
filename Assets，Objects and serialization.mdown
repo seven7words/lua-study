@@ -1,0 +1,121 @@
+# Assets，Objects and serialization
+这个是一系列的第二篇文章（Unity 5）
+和个章节包含了低层内部的Unity的序列化系统和Unity怎么在不同的对象例，包括Unity Editor和运行时中维持鲁棒性。它也从技术上解释了Object和Asset的区别。这个标题包括在Unity高效理解加载Assets和卸载Assets。正确的Asset管理是保持短的加载时间和使用少量内存的关键
+## 1.1 Inside Assets and Objects
+在Unity怎样正确的理解管理数据，重点是理解Unity是怎么识别和序列化数据的。第一个关键点是指出Assets和UnityEnigine.Objects的区别。
+
+Asset是在磁盘中的一个文件。在一个Unity项目中。在Asset folder文件下储存的。
+例如：texture files，material files 和fxb files 这些就是所有的Assets。一些Assets包含着Unity的格式化数据。例如materials。其他Assets需要被处理成那样子的个事，例如：FBX files。
+
+一个UnityEngine.Object，或者Object是以大写'O'为开头的。这是一个描述指定的资源实例的全体序列化的集合。这个可以是在UnityEnigin使用的任意类型的资源。例如mesh，sprite，audioclip，animationclip。所有饿对象都是UnityEnigine基类的子类。
+大多数的类型都是这样子被构建的，但是有两种特殊类型：
+1.一个脚本提供了给了程序员一个定义她们自己的数据类型的一个方便的系统。这些类型可以是序列化也可以不是序列化。这个是由在Unity Editor 的Inspector Window去操纵
+2.MonoBehaviour提供了链接monoscript的一个封装。一个monoscript是一个内置的（Unity使用这个去持有包含着一个指定的assembly和namespace的引用）的数据类型。monoscript不包含任何实际可运行的代码
+在Assets和对象中有一个一对多的关系。任何一个给出的Asset文件都包含着一个或多个Objects。
+# 1.2 Inter-Object（对象间） references
+所有的对象都可能于其他对象产生引用。这些其他对象可能在共同的Assetfile里，或者其他对象从其他assetfile引入了。例如，一个材质球通常有一个或多个关于texture对象的引用。这些texture对象通常从一个或多个texture assetfiles导入了。（例如PNGS或者JPSGS）
+
+当序列化的时候，这些引用可能有两个分开的数据所组成：file guid和local id。file guid标示符标志着目标资源（assetfile）在那里存储。由于一个assetfile中包含着多个不同的object。所以在局部的唯一的local id标示符标志着每一个对象。
+
+file guids 使用.meta文件存储。这些.meta当Unity第一次倒入一个Asset生成的，并且被存储在Asset的同一个目录下。
+上面包含的标示符和引用系统可以由text editor查阅：创建一个新的Unity工程并且改变它的Editor Setting为可见meta file并且作为文本去序列化asset。创建一个才知秋并且倒入一个texture在项目中，分配这个材质球给一个cube，并且保存场景。
+
+使用text editor。打开关联材质球的.meta文件。有一行文本guid将出现在文件的上部。这行定义了了材质球Asset的File Guid。寻找local id。在text editor打开材质文件。这个材质Object的定义将看起来像这样：
+--- !u!21 &2100000
+Material:
+ serializedVersion: 3
+ ... more data ...
+
+ 在上面的例子中，数字将在材质球的localid的名称前面。如果这个材质Object位于File GUID “abcdefg”所识别的Asset中。然后材质Object能够是独特的哟个fileguid和localid所联合识别的
+
+ #  1.3 Why file guids 和 local ids？
+
+ 什么是Unity的 file guids 和local ids系统中重要的。这个回答是鲁棒的并且提供一个独立于平台之外的可以压缩的工作流。
+
+file guid 提供了一个抽象的文件指定位置。只要指定的file guid可以关联一个指定文件，那么跟文件的位置是无关的。这个文件只要没有涉及到文件的更新所有对象就可以自由的移动
+作为一个给定的asset file可能包含（或者通过import生成）多样的UnityEnigine.Object的资源，一个local ID是被要求清楚的区别每一个不一样的Object。
+如果File GUID关联的Asset File丢失，然后在那个Asst File所引用的所有Objects也会丢失，这就是为什么.meta file是这么的重要，并且必须保存在它关联的Asset files的同名文件夹。记住Unity将会重新生成删除了的或者放错地方的meta.file
+
+UnityEditor有一个指定文件路径的映射去知道File GUIDs。一个映射入口是被记录任何时间Asset被加载活着import。这个映射入口关联Asset指定的路径和Asset file guis。如果UnityEditor是打开的，当一个.meta file丢失了，并且Asset的路径并没有被改变，这个Editor可以确保Asset保持相同的File GUID
+
+当UnityEditor关闭了，但是.meta丢掉了，或者Asset的路径在没有.meta.file跟着Asset一起移动就改变了。然后所有的在Asset引用的Object都会被断掉。
+
+# 1.4 Composite Assets and importers
+就像在 Inside Assets and Objects这个章节提出的，不是Unity自身的类型的Asset必须被导入到Unity。可以通过asset importer进行这些操作。当这些倒入的Asset通产会自动的被调用。她们会通过AssetImporter API和自身的基类的脚本所暴露出来。例如，TextureImporter API接入到import单个的的texture assets。例如ONGS和JPGs，去设置使用。
+
+import的这个过程的结果是有一个或多个UnityEnigine.Objects。这些在UnityEditor中是作为多重的 sub-assets在父 Asset中是可见的。例如多重sprites嵌套在作为一个sprite 图集导入的texture asset的里面。这些Objects分享一个file guid作为她们的源数据被存储在相同的asset file中。它们将通过texture asset的local id来辨别。
+import的过程将转换源asset到在Unity Editor选择的目标平台格式的数据。import过程包含着一堆重量的操作，在UnityEditor打开的时候，texture压缩额外低效的运行在import过程的每个时间里。
+
+反而，Asset import的结果是在Library文件夹中当作缓存。说明确写。这些import程序被存储在以Asset file guid的第一个两个数字的名字来命名的文件夹。这个文件夹被存储在Library/metadata/ folder。蛋哥的对象被序列化到单个于Asset file guid同名的进制文件中。
+
+对于所有的asset中事实上都是true的。不仅仅是非原生的asset。然而原生的asset不要求冗长的转换程序或者重新序列化。
+# 1.5 Serialization and instances
+file guids 和local ids是鲁棒的，GUID比较起来是慢的并且在运行时需要高性能系统。Unity内部保存着转换File guid和local ids到简单的运行在单一的session唯一的数字的缓存。这些被叫做Instance IDs。并且当新的对象被注册在缓存中，在简单的单调递增能的命令下被分配。
+这个缓存保存着在给定的INstance id ，file guid和local id定义的Object的源数据的位置，并且是Object在内存中（或者任何地方）的实例的映射。这个允许UnityEnigine.Objects去鲁棒的维持着相互的引用关系。分辨一个Instance id引用可以快速的返回加载的由Instance ID所代表的Object。如果目标对象并没有加载，file guid和localid可以解决Object的源数据和Unity可以然后及时的加载的对象。
+
+在启动的时候，只有在Resources文件夹中被包含进来的时候，Instance ID 缓存是初始化对于所有的被构建到新项目的对象的数据。除此之外，当新的assets在运行时被import并且当对象从assetbundle加载中会被加到缓存的条目。Instance ID条目只有当它们变旧的时候才会被从缓存中移除。当assetbundle提供接入到指定的file guid 和local id被卸载的时候才会发生。
+
+当卸载一个assetbundle导致Instance ID变旧的时候，在Instance id和它自己的file guid 和local id的映射将会从内存中删除。如果assetbundle重新被加载，一个新的instance id将会从重新加载的assetbundle加载出来的每一个对象创建出来。
+
+对于更深层次的讨论卸载assetbundle的含义。去看the Managing Loaded Assets section in the AssetBundle Usage Patterns article.。。。。。。。。
+
+注意一个确定的事实是在指定的平台中可以迫使Object从内存中移除。
+例如当IOS的APP挂起的时候，图片资源的就会从图片内存中被卸载。如果这些来自assetbundle的对象被卸载，Unity将不能够重新加载这个Objects的源数据。这些引用将被标志为不合法的。在先前的例子中，将会出现丢失mesh或者model rendering 在洋红的textures & materials.
+
+实现注意：在运行时，上面的控制流是不能逐字精确的。将在重量的加载操作中，比较file guids和localids在运行时是不会足够充分高性能的操作的。当构建一个Unity project的时候，file guid 和localids是精确的用一个简单的格式进行映射的。然而，在概念上保持着同一，在运行时的file guid 和local id也保持也有用的类似。
+
+这也是为什么assetfiles guid不能在运行时被查询的原因。
+
+# 1.6 MonoScripts
+这是重要的去理解MonoBehaviour有一个MonoScript的引用并且MonoScript简单的包含了需要的指定文本的信息类。不是Object类型在脚本类中的包含可执行代码。
+
+一个MonoScripts包含三个字符串：an assembly name, a class name, and a namespace.
+
+当构建一个项目的时候，在Assets文件夹和编译它们到mono的程序集中，Unity会收集所有松散的脚本文件。说明确些，Unity构建一个程序集给每一个使用Asset文件的不同的语言。只有对于脚本来说分开的程序集会包含Assets/Plugins folder.
+C#脚本的外面的插件的文件夹会被 Assembly-CSharp.dll所取代，在Plugins的脚本会被Assembly-CSharp-firstpass.dll取代。等等。
+
+这些程序集（加上预编译的dll文件）被包含在最后构建的Unity应用中。他们是Monoscript所涉及的程序集。不像其他资源，当应用第一次加载的时候所有的程序集将会被包含在Unity application中加载。
+
+monoscript对象是为什么Assetbundle实际上不会包含在任何assetbundle（scene或者prefab）里面的monobehaviour组件的可执行代码。允许不同的monobehaviours去市集到指定的分享的类，即使monobehaviout是不同的assetbundle
+
+# 1.7. Resource lifecycle
+在指定并且定义的时间在UnityEnigine.Object从内存中被加载或者卸载。为了减少加载的时间和管理应用的内存足迹，理解UnityEnigine.Objects的生命周期是狠重要的。
+
+这里有两种方式去加载UNityENiglne.Objects：自动的或者手动的。无论什么时候Instance ID映射到对象是不需要引用的，在Object被自动的加载。Object当前没有加载到内存中，并且Object源代码可以被喂鱼指定的地方。Objects可以被明确在的脚本中进行加载，创建它们或者调用resourceloading api中。(e.g. AssetBundle.LoadAsset).
+
+当一个Object被加载的时候，Unity试着去分辨每一个引用的File GUID and Local ID 到Instance ID的所有引用。
+
+一个Object将按需求被加载第一时间，如果两个标志都是对的，则Instance id是不需要引用的。
+1.instance id引用了当前不需要加载的对象
+2.instance id有一个在缓存中不合法的file guid和local id
+在引用它自己被加载或者被转变同时发生在非常短的时间内
+
+如果一个file guid 和local id没有intance id。或者如果一个instance id带有一个没有加载的Object的引用一个不合法的file guid和local id。然后这个引用还是还是存在着，但是实际上的Object并没有被加载。它就会出现像一个missing的状况在UnityEditor。在一个运行的程序中，或者在Scene是图中missing对象就会以不同的形式可见，取决于它们的类型。meshes不可见还是textures出现洋红色。
+在三个专门的脚本中卸载Objects
+1.当不使用Asset清理就会发生，对象会自动的被卸载。当scenes被破坏的改变，这个程序会自动触发（例如唤起一个non-additive 的 Application.LoadLevel API）或者当一个脚本唤起了Resources.UnloadUnusedAssets API。这个程序职能卸载 没有引用的Objects：一个Object将职能如果没有Mono变量持有Object引用的时候被卸载，并且没有其他正在活动中的Object持有这个Object的引用。
+2.Objects来自Resources文件下可以被明确的通过 Resources.UnloadAsset API.卸载。对于这些对象的Instance id持有有效的并且包含合法的FIle guid和local id的目录。如果任何的mono变量或者其他的对象持有一个没有使用 Resources.UnloadAsset卸载的对象，不久如果其他的活动中的引用不引用了，这个Object将会被卸载
+3.Objects来自Asset Bundles是自动的并且立即的被卸载，当调用 AssetBundle.Unload(true) API. 这个将使Objects的Instanceid的file guid 和local id的引用无效，并且任何活动中的给卸载的Ibjects的引用将会变成missing，来自C#脚本，企图接入一个方法或者属性的在一个卸载的对象都会生成空引用。
+如果AssetBundle.Unload(false) 被调用，活动中的Objects来自被卸载的assetbundle将不会被销毁，但是Unity将标记不合法的file gud和localid引用给他们的insance id。如果不就它们就要从内存中卸载并且活动中的引用给卸载的对象持有这样子的将会编程可能。
+# 1.8. Loading large hierarchies
+当在层级视图中序列化Unity的GameObject（例如序列化的prefab）这是重要的对于记住全不在层级视图中显示的将完全的被学历恶化。就像，每一个GameObject和COmponent在层是面板将会被卫衣的序列化数据所代表。这个很有意思的产生在要求的时间加载并且生成层机面板的GameObjects的影响
+
+当创建任何一个GameObject的层机关系的时候，CPU的时间将花费在几个不同的地方
+1.去读取源数据（来自storage和另一个gameobkect）
+2.创建父子关系在新的transform
+3实例话一个新的对象和组件
+4激活新的对象和组件
+
+最后的三条时间花费是通常不变的不关是否是在层机面板中从一个存在的层机关系克隆或者是从storage加载（例如assetbundle）然而，花费时间去读区源数据是线性增加的根据组件和游戏对象的数量的序列化在层机啊关系，并且也是以源数据的速度成指数关系的。
+在当前所有的平台中，从内存中读取数据比别的从storage设备中加载要快。更一步说，表现特性的在可用的storage媒体设备中改变的非常巨大的啊在不同的平台中-PC从磁盘中加载数据要比从移动设备中加载数据要快
+
+因此，当从满的storage平台中加载prefabs。时间花费在读区prefab的序列化可能会迅速的超过花费在实例话prefab。事实上，加载的操作取决于storage的i／o时间
+
+之前提到过的，当序列化一个庞大的prefab，每一个gameobject和组件的序列化是分离的，即使数据是复制的。一个UI screen带有30个独立的元素将被独立的使用30 个时间去序列化，这个会生层十分庞大的进制数据。在加载的时间中，所有的gameobject和组件的数据每一个都会从磁盘中复制所有的元素比直接新实例话的元素要转换更多，所以在文件中读取的时间控制生成prefab的花费
+
+知道Unity支持嵌套prefab。项目可以额外生层巨大层机关系的Gameoobject可能能够减少加载哒prefab的时间通过移动可重用的元素去分离prefab和生成它们在运行机，而不是完全一列Unity的序列化和prefab系统
+
+更深一步的说，一旦prefab或者gameobject的层机会被构造，直接克隆已经存在的层机它要比从storage中加载一个新的拷贝要来的快
+
+Unity5.4Note：Unity5.4改变了标示transfoem在内存中的机制。每一个跟的transform会完全的紧凑的将其子的层机关系保存起来。接近内存的区域，当实例话一个新的gameobject将会立即重新定义父子给洗给另一个层机关系，构造使用新的gameobject。instantiate会虫灾接受父元素
+
+使用这个虫灾方法避免的分配一个跟的transform层机给一个新的gameobject测试，速度提升5-10%

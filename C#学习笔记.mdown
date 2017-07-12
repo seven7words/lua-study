@@ -1,0 +1,20 @@
+# type.IsAssignableFrom
+有时我们需要判断某个类是否实现了某个接口（Interface），比如在使用反射机制（Reflection）来查找特定类型的时候。
+http://www.tuicool.com/articles/fQFb2aE
+# Path.GetExtensition()
+返回扩展名
+# Path.GetFileNameWithoutExtension()
+返回不带扩展名的名字
+呦吼，把LuaUIGenerator源码看完了。如果说理解很深的话，那肯定是不可能的，所以，我只能尽量去理解，不过多多少少明白了一点插件的用法，其实最大的问题，我觉得这个应该是string的拼装，stringbuilder都需要好好理解才对（回家去看这两个，感觉很重要的样子啊）
+Unity ReorderableList 可重新排序的列表框使用
+# EditorGUI继承于Editor
+# EditorGUIUtility是用来帮助EditorGUI的一个工具类
+# GUIContent 这是一个GUI ELement 的一个环境，跟GUIStyle工作比较紧密，它定义了什么是渲染，GUIStyle定义了怎么去渲染它
+Editor.OnInspectorGUI
+用来制作一个自己喜欢的自定义界面
+Editor.DrawDefaultInspector
+绘制内置
+调用函数绘制自动的检查器面板，这个非常有用于你不想重新做整个格式，你只是想添加一下按钮
+EditorGUI.BeginDisabledGroup 往往和end是一对，私人猜测就是为了让程序运行的时候，不画自己画的面板，
+# AssetDataBase
+一个接入asset的接口并且执行相关操作

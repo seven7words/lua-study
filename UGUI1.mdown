@@ -1,0 +1,6 @@
+UGUI
+tips:
+UGUI的ScrollVIew一拖会回到开始位置，用flexibility的属性就可以调节（弹簧）
+tips2:
+想要随着文字的增多让其底部的图片也随着增长
+图片需要的组件：image。contentsizefitter。vertical layout group
